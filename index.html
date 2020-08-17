@@ -1,0 +1,272 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SERPO QR</title>
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <script src="js/jsQR.js"></script> 
+  
+  <style type="text/css" media="screen">
+
+    body {
+      font-family: 'Ropa Sans', sans-serif;
+      color: #333;            
+      margin: 0 auto;
+      position: relative;
+      overscroll-behavior: none;	
+    }
+
+  
+    h1 {
+      margin: 10px 0;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    #containerTop{
+      color: white;
+
+    }
+
+    #containerBottom{
+      color: white;
+    }
+
+    #loadingMessage {
+      text-align: center;
+      padding: 40px;
+      background-color: #eee;
+    }
+
+    #canvas {
+      width: 100%;
+    }
+
+    #output {
+      margin-top: 20px;
+      background: #eee;
+      padding: 10px;
+      padding-bottom: 0;
+    }
+
+    #output div {
+      padding-bottom: 10px;
+      word-wrap: break-word;
+    }
+
+    #noQRFound {
+      text-align: center;
+    }
+
+    textarea
+    {
+     border:1px solid #999999;
+     width:100%;
+     margin:5px 0;
+     padding:3px;
+    }
+
+  
+	   /* Set a style for all buttons */
+    button {
+          background-color: #7968c4;
+          color: white;
+          padding: 14px 20px;
+          margin: 8px 0;
+          border: none;
+          cursor: pointer;
+          width: 100%;
+        }	
+
+		/* Extra styles for the cancel button */
+	
+        .cancelbtn {		  
+          padding: 10px 18px;
+		  margin-bottom: 0 auto;		  
+          background-color: #f37c74;
+		}
+
+    .wrapper{
+      width: 30%;
+      margin-left: 35%;
+    }
+    @media only screen and (max-width: 900px) {
+      .wrapper{
+        width: 60%;
+        margin-left: 20%;
+      }
+    }
+    @media only screen and (max-width: 600px) {
+      .wrapper{
+        width: 80%;
+        margin-left: 10%;
+      }
+    }
+    
+			
+
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+  <h1>SERPO QR Scanner</h1>
+
+  <div id="loadingMessage">🎥 Unable to access video stream (please make sure you have a webcam enabled)</div>
+
+  <div class="containerTop" style="background-color:#f1f1f1">
+    <button type="button" id="buttonQROnOff" onclick=StoringQR()>QR OFF</button>
+  </div>
+
+  <div id="output" hidden>
+    <div id="outputMessage">No QR code detected.</div>
+    <div hidden><b>Qr code:</b> <span id="outputData"></span></div>
+  </div>
+
+  <canvas id="canvas" hidden></canvas>
+  <br>
+ </br>  
+
+  <textarea rows="4" cols="50" id="outputQrMessage" ></textarea>
+
+
+  <div class="containerBottom" style="background-color:#f1f1f1">
+    <button type="button" id="buttonSendQR" onclick=SendQr()>Send QR</button>
+  </div>
+</div>
+
+
+  <script>
+    var StartStoring = false;
+    var video = document.createElement("video");
+    var canvasElement = document.getElementById("canvas");
+    var canvas = canvasElement.getContext("2d");
+    var loadingMessage = document.getElementById("loadingMessage");
+    var outputContainer = document.getElementById("output");
+    var outputMessage = document.getElementById("outputMessage");
+    var outputData = document.getElementById("outputData");
+    var buttonONOFF = document.getElementById("buttonQROnOff");
+    var buttonSendQR = document.getElementById("buttonSendQR");
+    var outputQrMessage = document.getElementById("outputQrMessage");
+    var aspect=window.innerWidth / window.innerHeight;//winodw aspect ratio
+
+    /*if (GFG_Fun() ==="Device is Android Phone" ){
+         document.body.style.width = auto;
+    }
+    else{
+      document.body.style.width = window.innerWidth / 3;
+    }*/
+
+    function drawLine(begin, end, color) {
+      canvas.beginPath();
+      canvas.moveTo(begin.x, begin.y);
+      canvas.lineTo(end.x, end.y);
+      canvas.lineWidth = 4;
+      canvas.strokeStyle = color;
+      canvas.stroke();
+    }
+  
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
+      video.srcObject = stream;
+      video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+      video.play();
+
+      requestAnimationFrame(tick);
+    });
+
+    function tick() {
+      loadingMessage.innerText = "⌛ Loading video..."
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        loadingMessage.hidden = true;
+        canvasElement.hidden = false;
+        outputContainer.hidden = false;
+
+        canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth;
+        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+        var imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+        if (code) {
+          if (code.data.length>0){
+           drawLine(code.location.topLeftCorner, code.location.topRightCorner, "#FF3B58");
+           drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
+           drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
+           drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
+           outputMessage.hidden = true;
+           outputData.parentElement.hidden = false;          
+           outputData.innerText = code.data;
+          if (StartStoring === true){            
+            if (outputQrMessage.innerHTML.length ===0){
+
+                 outputQrMessage.innerHTML= code.data;
+
+            }
+            else{
+             if (CheckisUniqueQR(code.data,outputQrMessage.innerHTML) === false){
+
+                outputQrMessage.innerHTML=outputQrMessage.innerHTML+'\n'+code.data;
+
+             }
+            }
+          }
+          }
+        } else {
+          outputMessage.hidden = false;
+          outputData.parentElement.hidden = true;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+//-------------------------------------------------------------------
+    function StoringQR() {
+      if (StartStoring === false){
+        StartStoring = true;
+        buttonONOFF.innerHTML = "QR ON";
+        buttonONOFF.style.background='#f37c74';
+      }
+      else{
+        StartStoring = false;
+        buttonONOFF.innerHTML = "QR OFF";
+        buttonONOFF.style.background='#7968c4';
+      }
+    }
+ //-------------------------------------------------------------------
+   function SendQr(){
+     alert('Qr code sent');
+     outputQrMessage.innerHTML='';//clear
+   } 
+ //-------------------------------------------------------------------- 
+ function CheckisUniqueQR(qrs,smemo){  
+  var splitted = smemo.split("\n");
+  if (splitted.length ===0 ){
+  
+    return false;//not found
+
+  }
+  else{
+    var test=false;
+    for (var i=0;i<splitted.length;i++){
+       var t1=splitted[i];
+       if (t1 === qrs){
+         test = true;//found
+         break;
+       }
+       }
+    return test;    
+  }
+ } 
+ //-------------------------------------------------------------------
+ function GFG_Fun() { 
+            var res = "Device is not Android Phone"; 
+            var userAgent = navigator.userAgent.toLowerCase(); 
+            var Android = userAgent.indexOf("android") > -1; 
+              
+            if(Android) { 
+                res = "Device is Android Phone"; 
+            } 
+ }
+ //--------------------------------------------------------------------  
+  </script>
+</body>
+</html>
